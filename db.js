@@ -1,6 +1,8 @@
 const Sequelize = require('sequelize');
 const { STRING } = Sequelize;
-const jwt = require('jsonwebtoken')
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+
 const config = {
   logging: false
 };
@@ -12,12 +14,20 @@ const conn = new Sequelize(process.env.DATABASE_URL || 'postgres://localhost/acm
 
 const User = conn.define('user', {
   username: STRING,
-  password: STRING
+  password: STRING,
+}, {
+  hooks: {
+    async beforeCreate(user) {
+      const password = user.password;
+      const hashed = await bcrypt.hash(password, 5);
+      user.password = hashed;
+    }
+  }
 });
 
 User.byToken = async(token)=> {
   try {
-    const user = await User.findByPk(token);
+    const user = await User.findByPk(token.id);
     if(user){
       return user;
     }
@@ -36,13 +46,13 @@ User.authenticate = async({ username, password })=> {
   const user = await User.findOne({
     where: {
       username,
-      password,
     }
   });
-  if(user){
+  const hashed = user.password;
+  const authenticatePass = await bcrypt.compare(password, hashed)
+  if(authenticatePass){
     // return user.id;
-    console.log('this is jwt', jwt)
-    return jwt.sign({id: user.id, username: user.username}, process.env.JWTSECRET)
+    return jwt.sign({ id: user.id }, process.env.JWT)
   }
   const error = Error('bad credentials');
   error.status = 401;
@@ -56,8 +66,9 @@ const syncAndSeed = async()=> {
     { username: 'moe', password: 'moe_pw'},
     { username: 'larry', password: 'larry_pw'}
   ];
+
   const [lucy, moe, larry] = await Promise.all(
-    credentials.map( credential => User.create(credential))
+    credentials.map( credential =>  User.create(credential))
   );
   return {
     users: {

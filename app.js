@@ -3,12 +3,12 @@ const app = express();
 app.use(express.json());
 const { models: { User }} = require('./db');
 const path = require('path');
+const jwt = require('jsonwebtoken')
 
 app.get('/', (req, res)=> res.sendFile(path.join(__dirname, 'index.html')));
 
 app.post('/api/auth', async(req, res, next)=> {
   try {
-    console.log('This is req.body', req.body)
     res.send({ token: await User.authenticate(req.body)});
   }
   catch(ex){
@@ -16,10 +16,11 @@ app.post('/api/auth', async(req, res, next)=> {
   }
 });
 
-app.get('/api/auth', async(req, res, next)=> {
+app.get('/api/auth', async (req, res, next)=> {
   try {
-    console.log('this is req.headers.auth', req.headers.authorization)
-    res.send(await User.byToken(req.headers.authorization));
+    // res.send(await User.byToken(req.headers.authorization));
+    const token = await jwt.verify(req.headers.authorization, process.env.JWT)
+    res.send(await User.byToken(token));
   }
   catch(ex){
     next(ex);
