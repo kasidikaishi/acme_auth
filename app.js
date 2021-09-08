@@ -6,13 +6,17 @@ const path = require('path');
 
 app.get('/', (req, res)=> res.sendFile(path.join(__dirname, 'index.html')));
 
+// Extract the token from the request headers
+// Make a call to byToken to get the user object
+// Set the value of req.user to be that user's data
+// Call next() to pass the request along to the next middleware function in the chain
 const requireToken = async (req, res, next) => {
   try {
     const token = req.headers.authorization;
     // to verify the token is right or wrong by User.byToken function -
     // - jwt.verify(token, process.env.JWT) to get the payload -
     // - if it's right, the function will return the user
-    // so User.byToken will get the user is the token is right.
+    // so User.byToken will get the user if the token is right.
     const user = await User.byToken(token);
     req.user = user;
     next();
